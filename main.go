@@ -32,8 +32,8 @@ func main() {
 	}
 
 	fmt.Fprintf(w, "\n%d healthy\t%d degraded\t%d unreachable\t\n",
-              report.Counts[cluster.StatusHealthy],
-              report.Counts[cluster.StatusDegraded],
-              report.Counts[cluster.StatusUnreachable],
-    )
+		report.Counts[cluster.StatusHealthy],
+		report.Counts[cluster.StatusDegraded],
+		report.Counts[cluster.StatusUnreachable],
+	)
 }
