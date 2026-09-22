@@ -1,0 +1,6 @@
+gitignore
+# Binary produced by `go build`
+/clusterwatch
+
+# Test and coverage output
+*.out
