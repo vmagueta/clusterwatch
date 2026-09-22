@@ -28,3 +28,14 @@ func CheckAll(c Checker, nodes []Node) Report {
 		Counts:    counts,
 	}
 }
+
+// Unhealthy returns the results when the status are not “StatusHealthy“
+func (rpt Report) Unhealthy() []Result {
+	var results []Result
+	for _, r := range rpt.Results {
+		if r.Status != StatusHealthy {
+			results = append(results, r)
+		}
+	}
+	return results
+}

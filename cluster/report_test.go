@@ -50,3 +50,30 @@ func TestCheckAllCountsEveryStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestUnhealthyExcludesHealthyResults(t *testing.T) {
+	nodes := []Node{
+		{ID: "a", Addr: "10.0.0.1:9000"},
+		{ID: "b", Addr: "10.0.0.2:9000"},
+		{ID: "c", Addr: "10.0.0.3:9000"},
+	}
+
+	checker := fakeChecker{results: map[string]Result{
+		"a": {Status: StatusHealthy, Latency: 5 * time.Millisecond},
+		"b": {Status: StatusDegraded, Latency: 900 * time.Millisecond},
+		"c": {Status: StatusUnreachable, Err: errors.New("connection refused")},
+	}}
+
+	report := CheckAll(checker, nodes)
+	unhealthy := report.Unhealthy()
+
+	if got, want := len(unhealthy), 2; got != want {
+		t.Fatalf("len(Unhealthy()) = %d, want %d", got, want)
+	}
+
+	for _, r := range unhealthy {
+		if r.Status == StatusHealthy {
+			t.Errorf("Unhealthy() returned node %q with status %s", r.Node.ID, r.Status)
+		}
+	}
+}
