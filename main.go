@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
-	"text/tabwriter"
 	"time"
 
+	"github.com/vmagueta/clusterwatch/api"
 	"github.com/vmagueta/clusterwatch/cluster"
 )
 
@@ -21,19 +22,13 @@ func main() {
 		{ID: "dead", Addr: "127.0.0.1:9999"},
 	}
 
-	report := cluster.CheckAll(checker, nodes)
+	mux := http.NewServeMux()
+	mux.Handle("GET /report", api.ReportHandler(checker, nodes))
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	defer w.Flush()
-
-	fmt.Fprintln(w, "NODE\tSTATUS\tLATENCY\tERROR")
-	for _, r := range report.Results {
-		fmt.Fprintf(w, "%s\t%s\t%v\t%v\n", r.Node.ID, r.Status, r.Latency, r.Err)
+	addr := ":8080"
+	slog.Info("listening", "addr", addr)
+	if err := http.ListenAndServe(addr, mux); err != nil {
+		slog.Error("server stopped", "err", err)
+		os.Exit(1)
 	}
-
-	fmt.Fprintf(w, "\n%d healthy\t%d degraded\t%d unreachable\t\n",
-		report.Counts[cluster.StatusHealthy],
-		report.Counts[cluster.StatusDegraded],
-		report.Counts[cluster.StatusUnreachable],
-	)
 }
