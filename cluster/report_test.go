@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 )
@@ -18,6 +19,19 @@ func (f fakeChecker) Check(n Node) Result {
 		return r
 	}
 	return Result{Node: n, Status: StatusUnknown}
+}
+
+// barrierChecker blocks every Check until all expected calls have started.
+// A sequential caller deadlocks on the first call, so a test using it only
+// passes when checks genuinely run at the same time.
+type barrierChecker struct {
+	started *sync.WaitGroup
+}
+
+func (b barrierChecker) Check(n Node) Result {
+	b.started.Done()
+	b.started.Wait()
+	return Result{Node: n, Status: StatusHealthy}
 }
 
 func TestCheckAllCountsEveryStatus(t *testing.T) {
@@ -75,5 +89,25 @@ func TestUnhealthyExcludesHealthyResults(t *testing.T) {
 		if r.Status == StatusHealthy {
 			t.Errorf("Unhealthy() returned node %q with status %s", r.Node.ID, r.Status)
 		}
+	}
+}
+
+func TestCheckAllProbesNodesConcurrently(t *testing.T) {
+	nodes := []Node{{ID: "a"}, {ID: "b"}, {ID: "c"}}
+
+	var started sync.WaitGroup
+	started.Add(len(nodes))
+	checker := barrierChecker{started: &started}
+
+	done := make(chan Report, 1)
+	go func() { done <- CheckAll(checker, nodes) }()
+
+	select {
+	case report := <-done:
+		if got, want := report.Counts[StatusHealthy], len(nodes); got != want {
+			t.Errorf("Counts[healthy] = %d, want %d", got, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("CheckAll did not finish: nodes are not probed concurrently")
 	}
 }

@@ -1,6 +1,9 @@
 package cluster
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 // Report is the aggregated outcome of checking a fleet of nodes.
 type Report struct {
@@ -11,14 +14,21 @@ type Report struct {
 
 // CheckAll probes every node with the given checker and aggregates the results.
 //
-// Nodes are probed sequentially, so the total time is the sum of all checks.
+// Nodes are probed concurrently, one goroutine per node, so the total time is
+// roughly that of the slowest check. Results keep the order of nodes.
 func CheckAll(c Checker, nodes []Node) Report {
-	results := make([]Result, 0, len(nodes))
-	counts := make(map[Status]int)
+	results := make([]Result, len(nodes))
 
-	for _, n := range nodes {
-		r := c.Check(n)
-		results = append(results, r)
+	var wg sync.WaitGroup
+	for i, n := range nodes {
+		wg.Go(func() {
+			results[i] = c.Check(n)
+		})
+	}
+	wg.Wait()
+
+	counts := make(map[Status]int)
+	for _, r := range results {
 		counts[r.Status]++
 	}
 

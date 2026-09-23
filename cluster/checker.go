@@ -14,6 +14,9 @@ type Result struct {
 //
 // Implementations decide how a node is probed (TCP dial, HTTP request, ...);
 // callers only care about the Result.
+//
+// Check may be called from multiple goroutines at once, so implementations
+// must be safe for concurrent use.
 type Checker interface {
 	Check(n Node) Result
 }
