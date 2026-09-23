@@ -27,6 +27,12 @@ func (s Status) String() string {
 	}
 }
 
+// MarshalText encodes the status by name, so JSON and other text formats
+// never depend on the numeric value assigned by iota.
+func (s Status) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
 // Node is a single machine in the cluster, addressable over the network.
 type Node struct {
 	ID   string

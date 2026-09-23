@@ -1,6 +1,9 @@
 package cluster
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestStatusString(t *testing.T) {
 	tests := []struct {
@@ -21,5 +24,16 @@ func TestStatusString(t *testing.T) {
 				t.Errorf("Status(%d).String() = %q, want %q", tt.status, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestStatusMarshalsAsText(t *testing.T) {
+	got, err := json.Marshal(map[Status]Status{StatusHealthy: StatusDegraded})
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+
+	if want := `{"healthy":"degraded"}`; string(got) != want {
+		t.Errorf("json.Marshal = %s, want %s", got, want)
 	}
 }
